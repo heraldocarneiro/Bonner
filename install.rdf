@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RDF xmlns="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+	xmlns:em="http://www.mozilla.org/2004/em-rdf#">
+	<Description about="urn:mozilla:install-manifest">
+		<em:id>bonner@heraldocarneiro.com</em:id>
+		<em:version>0.1</em:version>
+		<em:type>2</em:type>
+
+		<em:targetApplication>
+			<Description>
+				<em:id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</em:id>
+				<em:minVersion>1.5</em:minVersion>
+				<em:maxVersion>3.*</em:maxVersion>
+			</Description>
+		</em:targetApplication>
+
+		<em:name>Bonner</em:name>
+		<em:description>A clustering feed reader.</em:description>
+		<em:creator>LABTRASGO/PESC/COPPE/UFRJ</em:creator>
+		<em:developer>Heraldo Carneiro</em:developer>
+		<em:homepageURL>http://www.heraldocarneiro.com/bonner/</em:homepageURL>
+		<em:translator>Heraldo Carneiro</em:translator>
+		<em:contributor>Geraldo Xexéo</em:contributor>
+		
+		<em:optionsURL>chrome://bonner/content/options.xul</em:optionsURL>
+		<!-- <em:aboutURL>chrome://bonner/content/about.xul</em:aboutURL> -->
+		<em:iconURL>chrome://bonner/skin/icon.png</em:iconURL>
+		
+		<em:localized>
+			<Description>
+				<em:locale>pt-BR</em:locale>
+				<em:description>Um leitor RSS que agrupa notícias similares.</em:description>
+			</Description>
+		</em:localized>
+
+	</Description>      
+</RDF>

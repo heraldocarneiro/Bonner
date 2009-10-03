@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE window SYSTEM "chrome://bonner/locale/bonner.dtd">
+<overlay id="bonner-overlay" 
+	xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+	<statusbar id="status-bar">
+		<statusbarpanel id="bonner-status" label="Bonner" insertafter="statusbar-resizerpanel" />
+	</statusbar>
+</overlay>
+
+

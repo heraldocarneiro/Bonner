@@ -1,0 +1,4 @@
+content bonner chrome/content/
+overlay chrome://browser/content/browser.xul chrome://bonner/content/browser.xul
+locale bonner en-US chrome/locale/en-US/
+locale bonner pt-BR chrome/locale/pt-BR/
