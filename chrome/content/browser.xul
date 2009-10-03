@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE window SYSTEM "chrome://bonner/locale/bonner.dtd">
 <overlay id="bonner-overlay" 
-	xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+		xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+	<script type="application/x-javascript" src="StatusPanel.js"/>
 	<statusbar id="status-bar">
-		<statusbarpanel id="bonner-status" label="Bonner" insertafter="statusbar-resizerpanel" />
+		<statusbarpanel id="bonner-status" label="Bonner" insertafter="statusbar-resizerpanel"
+					onclick="com.heraldocarneiro.bonner.StatusPanel.onClick(event);" />
 	</statusbar>
 </overlay>
 
