@@ -1,0 +1,112 @@
+<?xml version="1.0"?>
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
+<?xml-stylesheet href="chrome://bonner/skin/bonner.css" type="text/css"?>
+<?xml-stylesheet href="chrome://browser/content/places/places.css"?>
+<?xml-stylesheet href="chrome://browser/skin/places/places.css"?>
+
+<?xul-overlay href="chrome://browser/content/places/placesOverlay.xul"?>
+
+<!DOCTYPE window SYSTEM "chrome://bonner/locale/bonner.dtd">
+
+<page id="bonner-window"
+      xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+      title="Bonner"
+      onload="com.heraldocarneiro.bonner.MainWindow.onLoad();"
+      onunload="com.heraldocarneiro.bonner.MainWindow.onUnload();">
+
+    <script type="application/x-javascript" src="MainWindow.js"/>
+
+    <stringbundleset id="string-bundles">
+        <stringbundle id="main-bundle" src="chrome://bonner/locale/bonner.properties"/>
+    </stringbundleset>
+
+    <hbox id="main-box" flex="1">
+        <vbox id="left-pane" persist="width hidden">
+            <toolbox>
+                <toolbar id="feed-list-toolbar">
+					<toolbarbutton id="add-button"
+							tooltiptext="&addButton.tooltiptext;" label="Add"
+							oncommand="com.heraldocarneiro.bonner.MainWindow.onAddButtonClick();"/>
+                    <deck id="update-buttons-deck" selectedIndex="0">
+                        <toolbarbutton id="update-button"
+								tooltiptext="&updateButton.tooltiptext;" label="Update"
+								oncommand="com.heraldocarneiro.bonner.MainWindow.onUpdateButtonClick();"/>
+                        <toolbarbutton id="stop-update-button"
+								tooltiptext="&stopUpdateButton.tooltiptext;" label="Stop"
+								oncommand="com.heraldocarneiro.bonner.MainWindow.onStopUpdateButtonClick();"/>
+					</deck>
+                </toolbar>
+            </toolbox>
+            <deck id="feed-list-deck" selectedIndex="0" flex="1">
+                <tree id="feed-list" flex="1"
+                      hidecolumnpicker="true"
+                      seltype="single"
+                      persist="closedFolders"
+                      onselect="com.heraldocarneiro.bonner.MainWindow.onFeedListSelect(event);"
+                      onmousedown="com.heraldocarneiro.bonner.MainWindow.onFeedListMouseDown(event);"
+                      onclick="com.heraldocarneiro.bonner.MainWindow.onFeedListClick(event);"
+                      onkeyup="com.heraldocarneiro.bonner.MainWindow.onFeedListKeyUp(event);">
+
+                    <treecols>
+                        <treecol id="name" flex="1"
+                                 primary="true"
+                                 hideheader="true"/>
+                    </treecols>
+
+                    <treechildren id="top-level-children">
+                        <treeitem id="unread-folder"
+                                  specialFolder="true"
+                                  title="&unreadTreeItem.title;">
+                            <treerow>
+                                <treecell properties="unreadTreeItem "/>
+                            </treerow>
+                        </treeitem>
+                        <treeseparator id="special-folders-separator"/>
+                    </treechildren>
+                </tree>
+                <vbox>
+                    <tree id="places-tree"
+                          type="places"
+                          hidecolumnpicker="true"
+                          onselect="com.heraldocarneiro.bonner.MainWindow.onHomeFolderPickerSelect(event);">
+                        <treecols>
+                            <treecol id="title" flex="1"
+                                     primary="true"
+                                     hideheader="true"/>
+                        </treecols>
+                        <treechildren flex="1"/>
+                    </tree>
+                    <hbox pack="end">
+                        <button id="confirm-home-folder"
+                                label="&selectFolderButton.label;"
+                                disabled="true"
+                                oncommand="com.heraldocarneiro.bonner.MainWindow.onSelectFolderButtonClick(event);"/>
+                    </hbox>
+                </vbox>
+            </deck>
+        </vbox>
+        <splitter id="left-pane-splitter" persist="hidden"/>
+        <vbox flex="1">
+            <toolbox>
+                <toolbar id="feed-view-toolbar">
+                    <toolbarbutton id="toggle-sidebar" label="Toggle sidebar"
+                                   oncommand="om.heraldocarneiro.bonner.MainWindow.onToggleSidebarButtonClick(event);"/>
+                    <toolbarspring/>
+                    <toolbaritem id="navigation-box">
+                        <toolbarbutton id="prev-page" label="Previous"
+                                       tooltiptext="&previousButton.tooltiptext;"
+                                       oncommand="om.heraldocarneiro.bonner.MainWindow.onPreviousButtonClick(event);"/>
+                        <label id="page-desc"/>
+                        <toolbarbutton id="next-page" label="Next"
+                                       tooltiptext="&nextButton.tooltiptext;"
+                                       oncommand="om.heraldocarneiro.bonner.MainWindow.onNextButtonClick(event);"/>
+                    </toolbaritem>
+                </toolbar>
+            </toolbox>
+            <browser id="feed-view" flex="1"
+                     disablehistory="true"
+                     type="content"/>
+        </vbox>
+    </hbox>
+
+</page>

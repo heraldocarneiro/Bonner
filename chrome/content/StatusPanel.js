@@ -5,12 +5,79 @@ if (!com.heraldocarneiro.bonner) com.heraldocarneiro.bonner = {};
 
 com.heraldocarneiro.bonner.StatusPanel = function() {
 
-var oi = 'oi';
+function openAndReuseOneTabPerURL(url) {
+	var wm = Components.classes['@mozilla.org/appshell/window-mediator;1'].getService(Components.interfaces.nsIWindowMediator);
+	var browserEnum = wm.getEnumerator('navigator:browser');
+	// Check each browser instance for our URL
+	var found = false;
+	while (!found && browserEnum.hasMoreElements()) {
+		var browserWin = browserEnum.getNext();
+		var tabbrowser = browserWin.getBrowser();
+		// Check each tab of this browser instance
+		var numTabs = tabbrowser.browsers.length;
+		for (var i = 0; i < numTabs; ++i) {
+			var currentBrowser = tabbrowser.getBrowserAtIndex(i);
+			if (url == currentBrowser.currentURI.spec) {
+				// The URL is already opened. Select this tab.
+				tabbrowser.selectedTab = tabbrowser.mTabs[i];
+				// Focus *this* browser-window
+				browserWin.focus();
+				found = true;
+				break;
+			}
+		}
+	}
+	// Our URL isn't open. Open it now.
+	if (!found) {
+		var recentWindow = wm.getMostRecentWindow('navigator:browser');
+		if (recentWindow) {
+			// Use an existing browser window
+			recentWindow.delayedOpenTab(url, null, null, null, null);
+		} else {
+			// No browser windows are open, so open a new one.
+			window.open(url);
+		}
+	}
+}
+
 
 return {
+	handleEvent: function(evt) {
+		if (evt.type == 'load') this.onLoad(evt);
+	},
 	onClick: function(event) {
-		alert(oi);
+		openAndReuseOneTabPerURL('chrome://bonner/content/bonner.xul');
+	},
+	onLoad: function(event) {
+		var prefs = Components.classes['@mozilla.org/preferences-service;1']
+				.getService(Ci.nsIPrefService).getBranch('extensions.bonner.').QueryInterface(Ci.nsIPrefBranch2);
+		var firstRun = prefs.getBoolPref('firstRun');
+		if (firstRun) {
+			prefs.setBoolPref('firstRun', false);
+			this.createSchema();
+		}
+	},
+	createSchema: function() {
+		var file = Components.classes["@mozilla.org/file/directory_service;1"]  
+				.getService(Components.interfaces.nsIProperties).get("ProfD", Components.interfaces.nsIFile);  
+		file.append("bonner.sqlite");
+		var isNew = !file.exists();
+		//if (!isNew) return;
+		var storageService = Components.classes["@mozilla.org/storage/service;1"]  
+				.getService(Components.interfaces.mozIStorageService);  
+		var conn = storageService.openUnsharedDatabase(file);
+		conn.executeSimpleSQL('CREATE TABLE IF NOT EXISTS feed ('
+				+ 'id INTEGER PRIMARY KEY AUTOINCREMENT, '
+				+  'title TEXT, link TEXT UNIQUE, description TEXT, updated INTEGER'
+				+ ')');
+		conn.executeSimpleSQL('CREATE TABLE IF NOT EXISTS item ('
+				+ 'id INTEGER PRIMARY KEY AUTOINCREMENT, '
+				+  'title TEXT, link TEXT UNIQUE, content TEXT, published INTEGER'
+				+ ')');
 	}
 };
 
 }();
+
+// talvez um objeto bonner deve-se cuidar disso
+window.addEventListener('load', com.heraldocarneiro.bonner.StatusPanel, false);

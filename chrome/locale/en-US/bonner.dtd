@@ -1,1 +1,7 @@
-<!ENTITY button.accesskey "C">
+<!ENTITY updateButton.tooltiptext "Check all feeds for updates">
+<!ENTITY stopUpdateButton.tooltiptext "Stop checking feeds for updates">
+<!ENTITY addButton.tooltiptext "Add feed">
+<!ENTITY unreadTreeItem.title "Unread">
+<!ENTITY selectFolderButton.label "OK">
+<!ENTITY previousButton.tooltiptext "Previous page (newer itens)">
+<!ENTITY nextButton.tooltiptext "Next page (older items)">

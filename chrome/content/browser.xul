@@ -5,7 +5,7 @@
 	<script type="application/x-javascript" src="StatusPanel.js"/>
 	<statusbar id="status-bar">
 		<statusbarpanel id="bonner-status" label="Bonner" insertafter="statusbar-resizerpanel"
-					onclick="com.heraldocarneiro.bonner.StatusPanel.onClick(event);" />
+				onclick="com.heraldocarneiro.bonner.StatusPanel.onClick(event);" />
 	</statusbar>
 </overlay>
 
