@@ -35,7 +35,11 @@
 								tooltiptext="&stopUpdateButton.tooltiptext;" label="Stop"
 								oncommand="com.heraldocarneiro.bonner.MainWindow.onStopUpdateButtonClick();"/>
 					</deck>
-                </toolbar>
+					<toolbarbutton id="index-button" label="Index"
+							oncommand="com.heraldocarneiro.bonner.MainWindow.onIndexButtonClick();"/>
+					<toolbarbutton id="cluster-button" label="Cluster"
+							oncommand="com.heraldocarneiro.bonner.MainWindow.onClusterButtonClick();"/>
+				</toolbar>
             </toolbox>
             <deck id="feed-list-deck" selectedIndex="0" flex="1">
                 <tree id="feed-list" flex="1"
@@ -90,16 +94,16 @@
             <toolbox>
                 <toolbar id="feed-view-toolbar">
                     <toolbarbutton id="toggle-sidebar" label="Toggle sidebar"
-                                   oncommand="om.heraldocarneiro.bonner.MainWindow.onToggleSidebarButtonClick(event);"/>
+                                   oncommand="com.heraldocarneiro.bonner.MainWindow.onToggleSidebarButtonClick(event);"/>
                     <toolbarspring/>
                     <toolbaritem id="navigation-box">
                         <toolbarbutton id="prev-page" label="Previous"
                                        tooltiptext="&previousButton.tooltiptext;"
-                                       oncommand="om.heraldocarneiro.bonner.MainWindow.onPreviousButtonClick(event);"/>
+                                       oncommand="com.heraldocarneiro.bonner.MainWindow.onPreviousButtonClick(event);"/>
                         <label id="page-desc"/>
                         <toolbarbutton id="next-page" label="Next"
                                        tooltiptext="&nextButton.tooltiptext;"
-                                       oncommand="om.heraldocarneiro.bonner.MainWindow.onNextButtonClick(event);"/>
+                                       oncommand="com.heraldocarneiro.bonner.MainWindow.onNextButtonClick(event);"/>
                     </toolbaritem>
                 </toolbar>
             </toolbox>

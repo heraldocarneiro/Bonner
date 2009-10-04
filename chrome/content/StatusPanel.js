@@ -74,6 +74,24 @@ return {
 				+ 'id INTEGER PRIMARY KEY AUTOINCREMENT, '
 				+  'title TEXT, link TEXT UNIQUE, content TEXT, published INTEGER'
 				+ ')');
+		conn.executeSimpleSQL('CREATE TABLE IF NOT EXISTS cluster ('
+				+ 'id INTEGER PRIMARY KEY AUTOINCREMENT, '
+				+  'best_item_id INTEGER'
+				+ ')');
+		conn.executeSimpleSQL('CREATE TABLE IF NOT EXISTS cluster_item ('
+				+ 'cluster_id INTEGER, item_id INTEGER'
+				+ ')');
+		conn.executeSimpleSQL('CREATE TABLE IF NOT EXISTS word ('
+				+ 'id INTEGER PRIMARY KEY AUTOINCREMENT, '
+				+ 'string TEXT UNIQUE, item_count INTEGER DEFAULT 0'
+				+ ')');
+		conn.executeSimpleSQL('CREATE TABLE IF NOT EXISTS item_word ('
+				+ 'item_id INTEGER, word_id INTEGER, word_count INTEGER DEFAULT 0'
+				+ ')');
+		conn.executeSimpleSQL('CREATE TABLE IF NOT EXISTS item_stats ('
+				+ 'item_id INTEGER, word_count INTEGER DEFAULT 0'
+				+ ')');
+		conn.close();
 	}
 };
 
