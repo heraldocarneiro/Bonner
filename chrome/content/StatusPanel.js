@@ -91,6 +91,9 @@ return {
 		conn.executeSimpleSQL('CREATE TABLE IF NOT EXISTS item_stats ('
 				+ 'item_id INTEGER, word_count INTEGER DEFAULT 0'
 				+ ')');
+		conn.executeSimpleSQL('CREATE TABLE IF NOT EXISTS pair ('
+				+ 'item1_id INTEGER, item2_id INTEGER, cosine REAL DEFAULT 0.0'
+				+ ')');
 		conn.close();
 	}
 };

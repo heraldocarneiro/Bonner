@@ -3,7 +3,19 @@ if (!com.heraldocarneiro) com.heraldocarneiro = {};
 if (!com.heraldocarneiro.bonner) com.heraldocarneiro.bonner = {};
 
 
-com.heraldocarneiro.bonner.MainWindow = function() {
+com.heraldocarneiro.bonner.MainWindow = (function() {
+
+function dotProduct(vector1, vector2) {
+	var dotProduct = 0;
+	for (var i = 0; i < vector1.length; ++i) {
+		dotProduct += vector1[i] * vector2[i];
+	}
+	return dotProduct;
+}
+
+function norm(vector) {
+	return Math.sqrt(dotProduct(vector, vector));
+}
 
 return {
 	onLoad: function(event) {
@@ -78,6 +90,9 @@ return {
 					else word_counts[word] = 1;
 					++word_count;
 				}
+				stInsertItemStats.params.item_id = id;
+				stInsertItemStats.params.word_count = word_count;
+				stInsertItemStats.execute();
 				for (var word in word_counts) {
 					var word_id, item_count;
 					stSelectWord.params.word = word;
@@ -96,9 +111,6 @@ return {
 					stInsertItemWord.params.word_id = word_id;
 					stInsertItemWord.params.word_count = word_counts[word];
 					stInsertItemWord.execute();
-					stInsertItemStats.params.item_id = id;
-					stInsertItemStats.params.word_count = word_count;
-					stInsertItemStats.execute();
 				}
 			}
 		} catch (e) {
@@ -111,6 +123,89 @@ return {
 			//conn.close();
 		}
 		alert('index end');
+	},
+	onClusterButtonClick: function(event) {
+		alert('cluster begin');
+		var file = Components.classes["@mozilla.org/file/directory_service;1"]  
+				.getService(Components.interfaces.nsIProperties).get("ProfD", Components.interfaces.nsIFile);  
+		file.append("bonner.sqlite");
+		var storageService = Components.classes["@mozilla.org/storage/service;1"]  
+				.getService(Components.interfaces.mozIStorageService);  
+		var conn = storageService.openUnsharedDatabase(file);
+		var statement = conn.createStatement("SELECT item_id, word_count FROM item_stats");
+		var stItemWord = conn.createStatement("SELECT word_id, word_count, item_count FROM item_word AS iw "
+				+ "INNER JOIN word AS w ON w.id = iw.word_id "
+				+ "WHERE iw.item_id = :item_id");
+		var stPair = conn.createStatement('INSERT OR IGNORE INTO pair (item1_id, item2_id, cosine) VALUES (:item1_id, :item2_id, :cosine)');
+		var log10 = Math.log(10);
+		var items = [];
+		var wordCounts = [];
+		while (statement.executeStep()) {
+			items[items.length] = statement.row.item_id;
+			wordCounts[wordCounts.length] = statement.row.word_count;
+		}
+		
+		function computeCosines(progressFn) {
+			var i = 0;
+			(function outerLoop() {
+				if (i < items.length) {
+					var id1 = items[i];
+					var wordCount1 = wordCounts[i];
+					stItemWord.params.item_id = id1;
+					var words1 = {};
+					while (stItemWord.executeStep()) {
+						words1[stItemWord.row.word_id] = {
+							wordCount: stItemWord.row.word_count,
+							itemCount: stItemWord.row.item_count
+						};
+					}
+					stItemWord.reset();
+					var j = i + 1;
+					(function innerLoop() {
+						if (j < items.length) {
+							var id2 = items[j];
+							var wordCount2 = wordCounts[j];
+							stItemWord.params.item_id = id2;
+							var words2 = {};
+							while (stItemWord.executeStep()) {
+								words2[stItemWord.row.word_id] = {
+									wordCount: stItemWord.row.word_count,
+									itemCount: stItemWord.row.item_count
+								};
+							}
+							stItemWord.reset();
+							var wordVector = {};
+							for (var word_id in words1) wordVector[word_id] = words1[word_id].itemCount;
+							for (var word_id in words2) wordVector[word_id] = words2[word_id].itemCount;
+							var vector1 = [];
+							var vector2 = [];
+							for (var word_id in wordVector) {
+								var idf = Math.log(items.length / wordVector[word_id]) / log10;
+								var tf = words1[word_id] ? words1[word_id].wordCount / wordCount1 : 0;
+								vector1[vector1.length] = tf * idf;
+								tf = words2[word_id] ? words2[word_id].wordCount / wordCount2 : 0;
+								vector2[vector2.length] = tf * idf;
+							}
+							var cosine = dotProduct(vector1, vector2) / (norm(vector1) * norm(vector2));
+							stPair.params.item1_id = id1;
+							stPair.params.item2_id = id2;
+							stPair.params.cosine = cosine;
+							stPair.execute();
+							++j;
+							progressFn(i, j, items.length);
+							setTimeout(arguments.callee, 0);
+						} else {
+							++i;
+							setTimeout(outerLoop, 0);
+						}
+					})();
+				}
+			})();
+		}
+		computeCosines(function (i, j, length) {
+			document.getElementById('cluster-button').label = i + '/' + j + '/' + length;
+		});
+		alert('cluster end');
 	},
 	onStopUpdateButtonClick: function(event) {
 	},
@@ -188,4 +283,4 @@ return {
 	}
 };
 
-}();
+})();
