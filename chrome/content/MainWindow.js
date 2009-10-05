@@ -196,16 +196,21 @@ return {
 							setTimeout(arguments.callee, 0);
 						} else {
 							++i;
+							progressFn(i, j, items.length);
 							setTimeout(outerLoop, 0);
 						}
 					})();
 				}
 			})();
 		}
+		var start = new Date().getTime();
 		computeCosines(function (i, j, length) {
 			document.getElementById('cluster-button').label = i + '/' + j + '/' + length;
+			if (i == length) {
+				alert(new Date().getTime() - start);
+				alert('cluster end');
+			}
 		});
-		alert('cluster end');
 	},
 	onStopUpdateButtonClick: function(event) {
 	},
