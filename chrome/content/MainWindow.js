@@ -5,6 +5,8 @@ if (!com.heraldocarneiro.bonner) com.heraldocarneiro.bonner = {};
 
 com.heraldocarneiro.bonner.MainWindow = (function() {
 
+const TEMPLATE_URL = 'resource://bonner-content/feedview-template.html';
+
 function log(aMessage) {
   var consoleService = Cc['@mozilla.org/consoleservice;1'].
                        getService(Ci.nsIConsoleService);
@@ -43,9 +45,16 @@ var storageService = Components.classes["@mozilla.org/storage/service;1"]
 		.getService(Components.interfaces.mozIStorageService);  
 var conn = storageService.openUnsharedDatabase(file);
 
+var browser = null;
+
+
 return {
 	onLoad: function(event) {
 		log('Bonner load');
+		browser = document.getElementById('feed-view');
+		var templateURI = Components.classes['@mozilla.org/network/io-service;1'].
+				getService(Ci.nsIIOService).newURI(TEMPLATE_URL, null, null);
+		browser.loadURI(templateURI.spec);
 	},
 	onUnload: function(event) {
 		//alert('unload');
@@ -293,6 +302,66 @@ return {
 			}
 		})();
 	},
+	onShowButtonClick: function(event) {
+		var doc = browser.contentDocument;
+		var container = doc.getElementById('container');
+		container.innerHTML = '';
+		conn.beginTransaction();
+		var stCluster = conn.createStatement('SELECT id, best_item_id FROM cluster');
+		var stClusterItem = conn.createStatement(
+			'SELECT i.feed_id, f.title AS feed_title, i.id, i.title, i.content, i.published '
+			+ 'FROM cluster_item AS ci '
+			+ 'INNER JOIN item AS i ON i.id = ci.item_id '
+			+ 'INNER JOIN feed AS f ON f.id = i.feed_id '
+			+ 'WHERE cluster_id = :cluster_id');
+		var div = doc.createElement('div');
+		while (stCluster.executeStep()) {
+			var cluster = {id: stCluster.row.id, bestItemID: stCluster.row.best_item_id};
+			var items = {};
+			stClusterItem.params.cluster_id = cluster.id;
+			while (stClusterItem.executeStep()) {
+				var item = {
+					feedID: stClusterItem.row.feed_id,
+					feedTitle: stClusterItem.row.feed_title,
+					id: stClusterItem.row.id,
+					title: stClusterItem.row.title,
+					content: stClusterItem.row.content,
+					published: stClusterItem.row.published
+				};
+				items[item.id] = item;
+			}
+			stClusterItem.reset();
+			html = '<div class="cluster"><p><strong>Notícia:</strong><br/>';
+			html += items[cluster.bestItemID].feedID + ' - ' + items[cluster.bestItemID].feedTitle + '<br/>';
+			html += '<strong>' + items[cluster.bestItemID].id + ' - ' + items[cluster.bestItemID].title + '</strong><br/>';
+			html += '<em>' + items[cluster.bestItemID].published + '</em><br/>';
+			html += items[cluster.bestItemID].content + '</p>';
+			html += '<hr/><p><strong>Notícias relacionadas da mesma fonte:</strong></p>';
+			for (var id in items) {
+				if (id == cluster.bestItemID) continue;
+				if (items[id].feedID != items[cluster.bestItemID].feedID) continue;
+				html += '<p>' + items[id].feedID + ' - ' + items[id].feedTitle + '<br/>';
+				html += '<strong>' + items[id].id + ' - ' + items[id].title + '</strong><br/>';
+				html += '<em>' + items[id].published + '</em><br/>';
+				html += items[id].content + '</p>';
+			}
+			html += '<hr/><p><strong>Notícias relacionadas de outras fontes:</strong></p>';
+			for (var id in items) {
+				if (id == cluster.bestItemID) continue;
+				if (items[id].feedID == items[cluster.bestItemID].feedID) continue;
+				html += '<p>' + items[id].feedID + ' - ' + items[id].feedTitle + '<br/>';
+				html += '<strong>' + items[id].id + ' - ' + items[id].title + '</strong><br/>';
+				html += '<em>' + items[id].published + '</em><br/>';
+				html += items[id].content + '</p>';
+			}
+			html += '</div>';
+			var div = doc.createElement('div');
+			div.innerHTML = html;
+			container.appendChild(div);
+		}
+		stCluster.reset();
+		conn.commitTransaction();
+	},
 	onStopUpdateButtonClick: function(event) {
 	},
 	fetchFeed: function(feedID, feedURL) {
@@ -300,12 +369,6 @@ return {
 		
 		var listener = {
 		  handleResult: function(result) {
-			var file = Components.classes["@mozilla.org/file/directory_service;1"]  
-				.getService(Components.interfaces.nsIProperties).get("ProfD", Components.interfaces.nsIFile);  
-			file.append("bonner.sqlite");
-			var storageService = Components.classes["@mozilla.org/storage/service;1"]  
-				.getService(Components.interfaces.mozIStorageService);  
-			var conn = storageService.openUnsharedDatabase(file);
 			alert('chegou!');
 			var feed = result.doc;
 			feed.QueryInterface(Components.interfaces.nsIFeed);

@@ -41,6 +41,8 @@
 							oncommand="com.heraldocarneiro.bonner.MainWindow.onCosineButtonClick();"/>
 					<toolbarbutton id="cluster-button" label="Cluster"
 							oncommand="com.heraldocarneiro.bonner.MainWindow.onClusterButtonClick();"/>
+					<toolbarbutton id="show-button" label="Show"
+							oncommand="com.heraldocarneiro.bonner.MainWindow.onShowButtonClick();"/>
 				</toolbar>
             </toolbox>
 			<label id="progress-label" value="" />

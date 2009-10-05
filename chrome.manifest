@@ -1,4 +1,5 @@
 content bonner chrome/content/
+resource  bonner-content  defaults/data/
 overlay chrome://browser/content/browser.xul chrome://bonner/content/browser.xul
 locale bonner en-US chrome/locale/en-US/
 locale bonner pt-BR chrome/locale/pt-BR/
