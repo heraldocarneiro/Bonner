@@ -37,10 +37,14 @@
 					</deck>
 					<toolbarbutton id="index-button" label="Index"
 							oncommand="com.heraldocarneiro.bonner.MainWindow.onIndexButtonClick();"/>
+					<toolbarbutton id="cosine-button" label="Cosine"
+							oncommand="com.heraldocarneiro.bonner.MainWindow.onCosineButtonClick();"/>
 					<toolbarbutton id="cluster-button" label="Cluster"
 							oncommand="com.heraldocarneiro.bonner.MainWindow.onClusterButtonClick();"/>
 				</toolbar>
             </toolbox>
+			<label id="progress-label" value="" />
+			<progressmeter id="progress-meter" mode="determined" value="0"/>
             <deck id="feed-list-deck" selectedIndex="0" flex="1">
                 <tree id="feed-list" flex="1"
                       hidecolumnpicker="true"

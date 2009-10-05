@@ -71,7 +71,7 @@ return {
 				+  'title TEXT, link TEXT UNIQUE, description TEXT, updated INTEGER'
 				+ ')');
 		conn.executeSimpleSQL('CREATE TABLE IF NOT EXISTS item ('
-				+ 'id INTEGER PRIMARY KEY AUTOINCREMENT, '
+				+ 'id INTEGER PRIMARY KEY AUTOINCREMENT, feed_id INTEGER, '
 				+  'title TEXT, link TEXT UNIQUE, content TEXT, published INTEGER'
 				+ ')');
 		conn.executeSimpleSQL('CREATE TABLE IF NOT EXISTS cluster ('
