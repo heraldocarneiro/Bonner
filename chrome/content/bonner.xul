@@ -1,4 +1,4 @@
-<?xml version="1.0"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
 <?xml-stylesheet href="chrome://bonner/skin/bonner.css" type="text/css"?>
 <?xml-stylesheet href="chrome://browser/content/places/places.css"?>
@@ -15,6 +15,7 @@
       onunload="com.heraldocarneiro.bonner.MainWindow.onUnload();">
 
     <script type="application/x-javascript" src="MainWindow.js"/>
+	<script type="application/x-javascript" src="LanguageDetector.js"/>
 
     <stringbundleset id="string-bundles">
         <stringbundle id="main-bundle" src="chrome://bonner/locale/bonner.properties"/>
@@ -43,6 +44,10 @@
 							oncommand="com.heraldocarneiro.bonner.MainWindow.onClusterButtonClick();"/>
 					<toolbarbutton id="show-button" label="Show"
 							oncommand="com.heraldocarneiro.bonner.MainWindow.onShowButtonClick();"/>
+					<toolbarbutton id="lang-button" label="Language"
+							oncommand="com.heraldocarneiro.bonner.LanguageDetector.detectLanguage();"/>
+					<toolbarbutton id="geturl-button" label="Get URL"
+							oncommand="com.heraldocarneiro.bonner.MainWindow.onGetURLButtonClick();"/>
 				</toolbar>
             </toolbox>
 			<label id="progress-label" value="" />

@@ -75,6 +75,13 @@ return {
 		setProgress('Adding feed... done in ' + duration + ' secs.', 100);
 	},
 	onUpdateButtonClick: function(event) {
+		var file = Components.classes["@mozilla.org/file/directory_service;1"]  
+		.getService(Components.interfaces.nsIProperties).get("ProfD", Components.interfaces.nsIFile);  
+file.append("bonner.sqlite");
+var storageService = Components.classes["@mozilla.org/storage/service;1"]  
+		.getService(Components.interfaces.mozIStorageService);  
+var conn = storageService.openUnsharedDatabase(file);
+
 		var startTime = new Date().getTime();
 		setProgress('Checking feeds for updates...', 0);
 		var statement = conn.createStatement("SELECT id, link FROM feed");
@@ -262,7 +269,6 @@ return {
 					if (items[id1] != items[id2]) {
 						var cluster2 = clusters[items[id2]];
 						delete clusters[items[id2]];
-						if (typeof(cluster2) == 'undefined') alert(id2 + ' = ' + items[id2]);
 						for (var i = 0; i < cluster2.length; ++i) {
 							clusters[items[id1]].push(cluster2[i]);
 							items[cluster2[i]] = items[id1];
@@ -331,7 +337,7 @@ return {
 				items[item.id] = item;
 			}
 			stClusterItem.reset();
-			html = '<div class="cluster"><p><strong>Notícia:</strong><br/>';
+			var html = '<div class="cluster"><p><strong>Notícia:</strong><br/>';
 			html += items[cluster.bestItemID].feedID + ' - ' + items[cluster.bestItemID].feedTitle + '<br/>';
 			html += '<strong>' + items[cluster.bestItemID].id + ' - ' + items[cluster.bestItemID].title + '</strong><br/>';
 			html += '<em>' + items[cluster.bestItemID].published + '</em><br/>';
@@ -364,12 +370,74 @@ return {
 	},
 	onStopUpdateButtonClick: function(event) {
 	},
+	onGetURLButtonClick: function(event) {
+		var url = prompt('URL:');
+		if (!url) return;
+		var httpRequest = new XMLHttpRequest();
+		httpRequest.open("GET", url, true);
+		try {
+			httpRequest.onload = function() {
+				var data = httpRequest.responseText;
+				alert(data);
+				data = data.replace(/\s+/gi, ' ');
+				//todo Remover comentários
+				function removeTagBlocks(tags) {
+					for (var i = 0; i < tags.length; ++i) {
+						var r = new RegExp('\\<' + tags[i] + '.*?\\>.*?\\<\\/' + tags[i] + '.*?\\>', 'gi');
+						data = data.replace(r, ' ');
+					}
+				}
+				function removeTags(tags) {
+					for (var i = 0; i < tags.length; ++i) {
+						var r = new RegExp('\\<\\/?' + tags[i] + '(\\s+[^\\>]*)*\\>', 'gi');
+						data = data.replace(r, ' ');
+					}
+				}
+				removeTagBlocks(['script', 'style']);
+				removeTags(['a', 'b', 'strong', 'em', 'i',, 'u', 'span', 'br', 'p']); // remover p ou </p><p>? remover div?
+				data = data.replace(/\<[^\>]*\/\>/gi, ' ');
+				data = data.replace(/\<(\/[^\>\s]*)[^\>]*\>/gi, '<$1>');
+				data = data.replace(/\<([^\/][^\>\s]*)[^\>]*\>/gi, '<$1>');
+				data = data.replace(/\s+/gi, ' ');
+				alert(data);
+				var sentences = [];
+				var re = /([^\<\>\.\s][^\<\>\.]*\.)(\<|\s)/gi; // problema da "frase com aspas dps do ponto."
+				var match, lastSentence = null;
+				while (match = re.exec(data)) {
+					var sentence = {text: match[1], beginPos: match.index, endPos: match.index + match[1].length - 1};
+					if (lastSentence == null || sentence.beginPos - lastSentence.endPos > 5) {
+						sentences.push([sentence.text]);
+						//alert("NOVO - '" + sentence.text + "' = " + sentence.beginPos + '-' + sentence.endPos);
+					} else {
+						sentences[sentences.length - 1].push(sentence.text);
+						//alert("'" + sentence.text + "' = " + sentence.beginPos + '-' + sentence.endPos);
+					}
+					lastSentence = sentence;
+				}
+				for (var i = sentences.length - 1; i >= 0; --i) {
+					if (sentences[i].length < 3) sentences.splice(i, 1);
+					else sentences.splice(i, 1, sentences[i].join(' '));
+				}
+				var text = sentences.join(' ');
+				alert(text);
+			}
+			httpRequest.send(null);
+		} catch (e) {
+			alert(e);
+		}
+	},
 	fetchFeed: function(feedID, feedURL) {
 		var httpRequest = null;
 		
 		var listener = {
 		  handleResult: function(result) {
-			alert('chegou!');
+		  var file = Components.classes["@mozilla.org/file/directory_service;1"]  
+		.getService(Components.interfaces.nsIProperties).get("ProfD", Components.interfaces.nsIFile);  
+file.append("bonner.sqlite");
+var storageService = Components.classes["@mozilla.org/storage/service;1"]  
+		.getService(Components.interfaces.mozIStorageService);  
+var conn = storageService.openUnsharedDatabase(file);
+
 			var feed = result.doc;
 			feed.QueryInterface(Components.interfaces.nsIFeed);
 			var statement = conn.createStatement("UPDATE feed SET title = :title, description = :description, updated = :updated WHERE id = :id");
@@ -405,7 +473,6 @@ return {
 		
 		function infoReceived() {
 		  var data = httpRequest.responseText;
-		  alert(data);
 		  var ioService = Components.classes['@mozilla.org/network/io-service;1']
 											 .getService(Components.interfaces.nsIIOService);
 		  var uri = ioService.newURI(feedURL, null, null);
