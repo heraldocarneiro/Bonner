@@ -368,6 +368,84 @@ var conn = storageService.openUnsharedDatabase(file);
 		stCluster.reset();
 		conn.commitTransaction();
 	},
+	onCentroidButtonClick: function(event) {
+		var startTime = new Date().getTime();
+		setProgress('Calculating centroids...', 0);
+		conn.beginTransaction();
+		var stItemCount = conn.createStatement("SELECT COUNT(*) AS count FROM item");
+		var totalItems = stItemCount.executeStep() ? stItemCount.row.count : 0;
+		var stCluster = conn.createStatement("SELECT id FROM cluster");
+		var stClusterItem = conn.createStatement("SELECT ci.item_id, i.word_count FROM cluster_item AS ci "
+			+ "INNER JOIN item_stats AS i ON i.item_id = ci.item_id "
+			+ "WHERE ci.cluster_id = :cluster_id");
+		var stItemWord = conn.createStatement("SELECT ci.item_id, iw.word_id, iw.word_count, w.item_count FROM item_word AS iw "
+				+ "INNER JOIN word AS w ON w.id = iw.word_id "
+				+ "INNER JOIN cluster_item AS ci ON ci.item_id = iw.item_id "
+				+ "WHERE ci.cluster_id = :cluster_id");
+		var stBestItem = conn.createStatement('UPDATE cluster SET best_item_id = :best_item_id WHERE id = :cluster_id');
+		var log10 = Math.log(10);
+		while (stCluster.executeStep()) {
+			var cluster_id = stCluster.row.id;
+			var items = {};
+			stClusterItem.params.cluster_id = cluster_id;
+			while (stClusterItem.executeStep()) {
+				var item = {
+					id: stClusterItem.row.item_id,
+					wordCount: stClusterItem.row.word_count,
+					words: {},
+					vector: []
+				};
+				items[item.id] = item;
+			}
+			stClusterItem.reset();
+			var words = {};
+			stItemWord.params.cluster_id = cluster_id;
+			while (stItemWord.executeStep()) {
+				var item_id = stItemWord.row.item_id;
+				var word_id = stItemWord.row.word_id;
+				var word_count = stItemWord.row.word_count;
+				var item_count = stItemWord.row.item_count;
+				items[item_id].words[word_id] = word_count;
+				words[word_id] = item_count;
+			}
+			stItemWord.reset();
+			var centroid = [];
+			for (var word_id in words) {
+				var itemCount = words[word_id];
+				var idf = Math.log(totalItems / itemCount) / log10;
+				var centroid_num = 0, centroid_den = 0;
+				for (var item_id in items) {
+					var item = items[item_id];
+					var tf = item.words[word_id] ? item.words[word_id] / item.wordCount : 0;
+					var tfidf = tf * idf;
+					item.vector.push(tfidf);
+					centroid_num += tfidf;
+					++centroid_den;
+				}
+				centroid.push(centroid_num / centroid_den);
+			}
+			var centroidNormSquared = Math.pow(norm(centroid), 2);
+			var closestDistance = null;
+			var closestItemId = null;
+			for (var item_id in items) {
+				var item = items[item_id];
+				var distance = Math.sqrt(Math.pow(norm(item.vector), 2) + centroidNormSquared - 2 * dotProduct(item, centroid));
+				log('item id = ' + item.id + ', dist = ' + distance);
+				if (closestDistance == null || distance < closestDistance) {
+					closestDistance = distance;
+					closestItemId = item.id;
+				}
+			}
+			log('Centroid ' + cluster_id + ' = ' + centroid.join(', '));
+			log('Closest: id = ' + closestItemId + ', dist = ' + closestDistance);
+			stBestItem.params.cluster_id = cluster_id;
+			stBestItem.params.best_item_id = closestItemId;
+			stBestItem.execute();
+		}
+		conn.commitTransaction();
+		var duration = (new Date().getTime() - startTime) / 1000;
+		setProgress('Calculating centroids... done in ' + duration + ' secs.', 100);
+	},
 	onStopUpdateButtonClick: function(event) {
 	},
 	onGetURLButtonClick: function(event) {
