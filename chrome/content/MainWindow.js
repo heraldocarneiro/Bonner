@@ -85,22 +85,26 @@ return {
 		setProgress('Adding feed... done in ' + duration + ' secs.', 100);
 	},
 	onUpdateButtonClick: function(event) {
+		log('update begin');
 		var file = Components.classes["@mozilla.org/file/directory_service;1"]  
 		.getService(Components.interfaces.nsIProperties).get("ProfD", Components.interfaces.nsIFile);  
 file.append("bonner.sqlite");
 var storageService = Components.classes["@mozilla.org/storage/service;1"]  
 		.getService(Components.interfaces.mozIStorageService);  
 var conn = storageService.openUnsharedDatabase(file);
+		conn.beginTransaction();
 
 		var startTime = new Date().getTime();
 		setProgress('Checking feeds for updates...', 0);
 		var statement = conn.createStatement("SELECT id, link FROM feed");
 		while (statement.executeStep()) {
-			this.fetchFeed(statement.row.id, statement.row.link);
+			this.fetchFeed(statement.row.id, statement.row.link, conn);
 		}
 		statement.reset();
+		conn.commitTransaction();
 		var duration = (new Date().getTime() - startTime) / 1000;
 		setProgress('Checking feeds for updates... done in ' + duration + ' secs.', 100);
+		log('update end');
 	},
 	onIndexButtonClick: function(event) {
 		var startTime = new Date().getTime();
@@ -112,7 +116,7 @@ var conn = storageService.openUnsharedDatabase(file);
 		var stSelectCount = conn.createStatement("SELECT COUNT(id) AS count FROM item");
 		var totalItems = stSelectCount.executeStep() ? stSelectCount.row.count : 1;
 		stSelectCount.reset();
-		var stSelectItem = conn.createStatement("SELECT id, title, link, content FROM item");
+		var stSelectItem = conn.createStatement("SELECT id, title, link, content, link_content FROM item");
 		var stSelectWord = conn.createStatement("SELECT id FROM word WHERE string = :word");
 		var stUpdateWord = conn.createStatement("UPDATE word SET item_count = item_count + 1 WHERE id = :id");
 		var stInsertWord = conn.createStatement("INSERT OR IGNORE INTO word (string, item_count) VALUES (:word, :item_count)");
@@ -124,7 +128,8 @@ var conn = storageService.openUnsharedDatabase(file);
 				var id = stSelectItem.row.id;
 				var title = stSelectItem.row.title;
 				var content = stSelectItem.row.content;
-				var text = title + ' ' + content;
+				var link_content = stSelectItem.row.link_content;
+				var text = title + ' ' + content + ' ' + link_content;
 				text = text.replace(/\<[^\>]*\>/gi, '').replace(/[\.\,\;\:\?\!\'\"\r\n\(\)]/gi, ' ')
 						.replace(/\s+/gi, ' ').replace(/(^\s+|\s+$)/gi, '').toLowerCase();
 				var words = text.split(/\s+/gi);
@@ -132,6 +137,8 @@ var conn = storageService.openUnsharedDatabase(file);
 				var word_count = 0;
 				for (var i = 0; i < words.length; ++i) {
 					var word = words[i];
+					if (com.heraldocarneiro.bonner.StopWordsRemover.isStopWord(word)) continue;
+					word = com.heraldocarneiro.bonner.RSLPStemmer.processWord(word);
 					if (word_counts[word]) word_counts[word] += 1;
 					else word_counts[word] = 1;
 					++word_count;
@@ -325,13 +332,15 @@ var conn = storageService.openUnsharedDatabase(file);
 		conn.beginTransaction();
 		var stCluster = conn.createStatement('SELECT id, best_item_id FROM cluster');
 		var stClusterItem = conn.createStatement(
-			'SELECT i.feed_id, f.title AS feed_title, i.id, i.link, i.title, i.content, i.published '
+			'SELECT i.feed_id, f.title AS feed_title, i.id, i.link, i.title, i.content, i.published, i.link_content, ci.centroid_distance '
 			+ 'FROM cluster_item AS ci '
 			+ 'INNER JOIN item AS i ON i.id = ci.item_id '
 			+ 'INNER JOIN feed AS f ON f.id = i.feed_id '
 			+ 'WHERE cluster_id = :cluster_id');
+		var stCosines = conn.createStatement('SELECT item1_id, item2_id, cosine FROM pair WHERE item1_id IN (SELECT item_id FROM cluster_item WHERE cluster_id = :cluster_id) AND item2_id IN (SELECT item_id FROM cluster_item WHERE cluster_id = :cluster_id)');
 		var div = doc.createElement('div');
 		var colorFlag = 0;
+		var i = 0;
 		while (stCluster.executeStep()) {
 			var cluster = {id: stCluster.row.id, bestItemID: stCluster.row.best_item_id};
 			var items = {};
@@ -344,37 +353,46 @@ var conn = storageService.openUnsharedDatabase(file);
 					link: stClusterItem.row.link,
 					title: stClusterItem.row.title,
 					content: stClusterItem.row.content,
-					published: stClusterItem.row.published
+					published: stClusterItem.row.published,
+					linkContent: stClusterItem.row.link_content,
+					centroidDistance: stClusterItem.row.centroid_distance
 				};
 				items[item.id] = item;
 			}
 			stClusterItem.reset();
 			var bestItem = items[cluster.bestItemID];
 			colorFlag = 1 - colorFlag;
-			var html = '<div class="cluster flag' + colorFlag + '">';
+			var html = '<div class="cluster flag' + colorFlag + '">Cluster ' + ++i;
 			html += '<p><strong>Best item (closest to the centroid):</strong><br/>';
-			html += bestItem.feedID + ' - ' + bestItem.feedTitle + '<br/>';
+			html += bestItem.feedID + ' - ' + bestItem.feedTitle + '[centroid = ' + bestItem.centroidDistance + ']' + '<br/>';
 			html += '<strong>' + bestItem.id + ' - ' + bestItem.title + '</strong> - ' + bestItem.link + '<br/>';
 			html += '<em>' + bestItem.published + '</em><br/>';
-			html += bestItem.content + '</p>';
+			html += bestItem.content + ' <strong>[[[</strong>' + bestItem.linkContent + '<strong>]]]</strong>' + '</p>';
 			html += '<hr/><p><strong>Related items from the same source:</strong></p>';
 			for (var id in items) {
 				if (id == cluster.bestItemID) continue;
 				if (items[id].feedID != bestItem.feedID) continue;
-				html += '<p>' + items[id].feedID + ' - ' + items[id].feedTitle + '<br/>';
+				html += '<p>' + items[id].feedID + ' - ' + items[id].feedTitle + '[centroid = ' + items[id].centroidDistance + ']' + '<br/>';
 				html += '<strong>' + items[id].id + ' - ' + items[id].title + '</strong> - ' + items[id].link + '<br/>';
 				html += '<em>' + items[id].published + '</em><br/>';
-				html += items[id].content + '</p>';
+				html += items[id].content + ' <strong>[[[</strong>' + items[id].linkContent + '<strong>]]]</strong>' + '</p>';
 			}
 			html += '<hr/><p><strong>Related items from other sources:</strong></p>';
 			for (var id in items) {
 				if (id == cluster.bestItemID) continue;
 				if (items[id].feedID == bestItem.feedID) continue;
-				html += '<p>' + items[id].feedID + ' - ' + items[id].feedTitle + '<br/>';
+				html += '<p>' + items[id].feedID + ' - ' + items[id].feedTitle + '[centroid = ' + items[id].centroidDistance + ']' + '<br/>';
 				html += '<strong>' + items[id].id + ' - ' + items[id].title + '</strong> - ' + items[id].link + '<br/>';
 				html += '<em>' + items[id].published + '</em><br/>';
-				html += items[id].content + '</p>';
+				html += items[id].content + ' <strong>[[[</strong>' + items[id].linkContent + '<strong>]]]</strong>' + '</p>';
 			}
+			// cosines
+			html += '<hr/><p><strong>Pairwise cosine similarities:</strong></p>';
+			stCosines.params.cluster_id = cluster.id;
+			while (stCosines.executeStep()) {
+				html += stCosines.row.item1_id + ', ' + stCosines.row.item2_id + ' = ' + stCosines.row.cosine + '<br/>';
+			}
+			stCosines.reset();
 			html += '</div>';
 			var div = doc.createElement('div');
 			div.innerHTML = html;
@@ -399,6 +417,7 @@ var conn = storageService.openUnsharedDatabase(file);
 				+ "INNER JOIN cluster_item AS ci ON ci.item_id = iw.item_id "
 				+ "WHERE ci.cluster_id = :cluster_id");
 		var stBestItem = conn.createStatement('UPDATE cluster SET best_item_id = :best_item_id WHERE id = :cluster_id');
+		var stDistance = conn.createStatement('UPDATE cluster_item SET centroid_distance = :centroid_distance WHERE cluster_id = :cluster_id AND item_id = :item_id');
 		var log10 = Math.log(10);
 		(function() {
 			if (stCluster.executeStep()) {
@@ -452,6 +471,10 @@ var conn = storageService.openUnsharedDatabase(file);
 						closestDistance = distance;
 						closestItemId = item.id;
 					}
+					stDistance.params.cluster_id = cluster_id;
+					stDistance.params.item_id = item_id;
+					stDistance.params.centroid_distance = distance;
+					stDistance.execute();
 					++processedItems;
 				}
 				log('Centroid ' + cluster_id + ' = ' + centroid.join(', '));
@@ -471,9 +494,9 @@ var conn = storageService.openUnsharedDatabase(file);
 	onStopUpdateButtonClick: function(event) {
 	},
 	getURL: function(url) {
-		var httpRequest = new XMLHttpRequest();
-		httpRequest.open("GET", url, false); //false = synchronous
 		try {
+			var httpRequest = new XMLHttpRequest();
+			httpRequest.open("GET", url, false); //false = synchronous
 			var httpRequest_onload = function() {
 				var data = httpRequest.responseText;
 				data = data.replace(/\s+/gi, ' ');
@@ -540,7 +563,7 @@ var conn = storageService.openUnsharedDatabase(file);
 			log(ret);
 			return ret;
 		} catch (e) {
-			alert(e);
+			alert('erro' + e);
 		}
 	},
 	onGetURLButtonClick: function(event) {
@@ -578,39 +601,52 @@ var conn = storageService.openUnsharedDatabase(file);
 		if (!url) return;
 		this.getURL(url);
 	},
-	fetchFeed: function(feedID, feedURL) {
+	fetchFeed: function(feedID, feedURL, conn) {
 		var httpRequest = null;
-		
+		var this_ = this;
 		var listener = {
 		  handleResult: function(result) {
-		  var file = Components.classes["@mozilla.org/file/directory_service;1"]  
+		  log(feedURL + ' - handleResult begin...');
+/*		  var file = Components.classes["@mozilla.org/file/directory_service;1"]  
 		.getService(Components.interfaces.nsIProperties).get("ProfD", Components.interfaces.nsIFile);  
 file.append("bonner.sqlite");
 var storageService = Components.classes["@mozilla.org/storage/service;1"]  
 		.getService(Components.interfaces.mozIStorageService);  
-var conn = storageService.openUnsharedDatabase(file);
+var conn = storageService.openUnsharedDatabase(file);*/
 
 			var feed = result.doc;
 			feed.QueryInterface(Components.interfaces.nsIFeed);
 			var statement = conn.createStatement("UPDATE feed SET title = :title, description = :description, updated = :updated WHERE id = :id");
 			statement.params.id = feedID;
-			alert(feed.title.text);
+			log(feed.title.text);
 			statement.params.title = feed.title.text;
 			statement.params.description = feed.subtitle.text;
 			statement.params.updated = feed.updated;
-			statement.execute();
+			log('before execute');
+			try {
+				statement.execute();
+			} catch (e) {
+				alert(e);
+			}
+			log('after  execute');
 			var itemArray = feed.items;
 			var numItems = itemArray.length;
+			log('items: ' + numItems);
 			var theEntry;
 			var erros = '';
 			for (var i=0; i<numItems; i++) {
 				theEntry = itemArray.queryElementAt(i, Components.interfaces.nsIFeedEntry);
 				if (!theEntry) continue;
-				var statement = conn.createStatement("INSERT OR IGNORE INTO item (feed_id, title, link, content, published) VALUES (:feed_id, :title, :link, :content, :published)");
+				log('linkContent begin');
+				var link = theEntry.link.resolve('');
+				var linkContent = this_.getURL(link);
+				log('linkContent end');
+				var statement = conn.createStatement("INSERT OR IGNORE INTO item (feed_id, title, link, content, published, link_content) VALUES (:feed_id, :title, :link, :content, :published, :link_content)");
 				statement.params.feed_id = feedID;
 				statement.params.title = theEntry.title.text;
-				statement.params.link = theEntry.link.resolve('');
+				statement.params.link = link;
 				statement.params.content = theEntry.summary ? theEntry.summary.text : theEntry.content.text;
+				statement.params.link_content = linkContent;
 				statement.params.published = theEntry.published;
 				try {
 					statement.execute();
@@ -618,12 +654,13 @@ var conn = storageService.openUnsharedDatabase(file);
 					erros += conn.lastErrorString + '\r\n';
 				}
 			}
+			log(feedURL + ' - handleResult end.');
 			if (erros != '') alert(erros);
-			conn.close();
 		  }
 		};
 		
 		function infoReceived() {
+			log(feedURL + ' - Info received begin...');
 		  var data = httpRequest.responseText;
 		  var ioService = Components.classes['@mozilla.org/network/io-service;1']
 											 .getService(Components.interfaces.nsIIOService);
@@ -633,18 +670,23 @@ var conn = storageService.openUnsharedDatabase(file);
 											.createInstance(Components.interfaces.nsIFeedProcessor);
 			try {
 			  parser.listener = listener;
+			  log(feedURL + ' - parseFromString begin...');
 			  parser.parseFromString(data, uri);
+			  log(feedURL + ' - parseFromString end.');
+			  log(feedURL + ' - Info received end.');
 			} catch(e) {
 			  alert("Error parsing feed.");
 			}
 		  }
 		}
-		
+		log(feedURL + ' - Iniciando XMLHTTPRequest...');
 		httpRequest = new XMLHttpRequest();
-		httpRequest.open("GET", feedURL, true);
-		try {
-		  httpRequest.onload = infoReceived;
-		  httpRequest.send(null);
+		httpRequest.open("GET", feedURL, false);
+		try {			
+		  //httpRequest.onload = infoReceived;
+		  httpRequest.send();
+		  infoReceived();
+		  log(feedURL + ' - Iniciando XMLHTTPRequest... done.');
 		} catch(e) {
 		  alert(e);
 		}

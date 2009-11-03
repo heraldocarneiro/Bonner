@@ -15,6 +15,7 @@
       onunload="com.heraldocarneiro.bonner.MainWindow.onUnload();">
 
     <script type="application/x-javascript" src="MainWindow.js"/>
+	<script type="application/x-javascript" src="RSLPStemmer.js"/>
 	<script type="application/x-javascript" src="LanguageDetector.js"/>
 
     <stringbundleset id="string-bundles">
