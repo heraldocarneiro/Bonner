@@ -611,11 +611,11 @@ stemmer.load({
 		{stepName: 'Plural', stepTrue: null, stepFalse: null}
 	]
 });
-var text = prompt('Text:');
+/*var text = prompt('Text:');
 if (text) {
 	var words = text.split(' ');
 	for (var i = 0; i < words.length; ++i) {
 		words[i] = stemmer.processWord(words[i]);
 	}
 	print(words.join(' '));
-}
+}*/
